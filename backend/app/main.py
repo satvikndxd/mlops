@@ -9,6 +9,7 @@ from app.api.v1 import api_router
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
 from app.core.metrics import metrics_response, prometheus_middleware
+from app.services.audit_service import record_audit
 
 logger = get_logger("agentforge")
 
@@ -37,6 +38,12 @@ def create_app() -> FastAPI:
     )
 
     app.middleware("http")(prometheus_middleware)
+
+    @app.middleware("http")
+    async def audit_middleware(request, call_next):  # noqa: ANN001, ANN202
+        response = await call_next(request)
+        record_audit(request, response)
+        return response
 
     @app.get("/metrics", include_in_schema=False)
     def metrics():  # noqa: ANN202

@@ -7,6 +7,7 @@ from app.models.agent import Agent, AgentVersion
 from app.models.trace import Span, Trace
 from app.models.cost import CostRecord
 from app.models.alert import AlertEvent, AlertRule
+from app.models.security import ApiKey, AuditLog
 
 __all__ = [
     "Base",
@@ -19,4 +20,6 @@ __all__ = [
     "CostRecord",
     "AlertRule",
     "AlertEvent",
+    "ApiKey",
+    "AuditLog",
 ]

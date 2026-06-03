@@ -36,6 +36,21 @@ class Settings(BaseSettings):
     default_org_slug: str = "default"
     default_org_name: str = "Default Organization"
 
+    # --- Auth / RBAC (Phase 1C) ---
+    # When False (demo default) the API resolves the default org and skips
+    # enforcement so the public dashboard + SDK ingest work without a login.
+    # When True, JWT/API-key auth and RBAC roles are enforced on every route.
+    auth_enabled: bool = False
+    jwt_secret_key: str = "dev-insecure-change-me-in-production"
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60 * 24
+
+    # --- Redis (Phase 1C) ---
+    # Optional. If unreachable, caching/rate-limiting degrade gracefully.
+    redis_url: str | None = None
+    cache_ttl_seconds: int = 15
+    rate_limit_per_minute: int = 600
+
     @property
     def is_sqlite(self) -> bool:
         return self.database_url.startswith("sqlite")

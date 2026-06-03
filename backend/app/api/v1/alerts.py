@@ -6,7 +6,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
-from app.api.deps import DbSession
+from app.api.deps import DbSession, require_admin
 from app.schemas.alert import (
     AlertEventOut,
     AlertRuleCreate,
@@ -24,7 +24,12 @@ def get_alert_service(db: DbSession) -> AlertService:
 router = APIRouter()
 
 
-@router.post("/rules", response_model=AlertRuleOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/rules",
+    response_model=AlertRuleOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_admin)],
+)
 def create_rule(
     payload: AlertRuleCreate, service: AlertService = Depends(get_alert_service)
 ) -> AlertRuleOut:
@@ -40,7 +45,12 @@ def list_rules(service: AlertService = Depends(get_alert_service)) -> list[Alert
     return [AlertRuleOut.model_validate(r) for r in service.list_rules()]
 
 
-@router.patch("/rules/{rule_id}", response_model=AlertRuleOut, summary="Update an alert rule")
+@router.patch(
+    "/rules/{rule_id}",
+    response_model=AlertRuleOut,
+    summary="Update an alert rule",
+    dependencies=[Depends(require_admin)],
+)
 def update_rule(
     rule_id: uuid.UUID,
     payload: AlertRuleUpdate,
@@ -55,7 +65,11 @@ def update_rule(
     return AlertRuleOut.model_validate(rule)
 
 
-@router.delete("/rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/rules/{rule_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_admin)],
+)
 def delete_rule(
     rule_id: uuid.UUID, service: AlertService = Depends(get_alert_service)
 ) -> Response:
