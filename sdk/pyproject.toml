@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentforge-sdk"
+version = "0.1.0"
+description = "AgentForge SDK — trace AI agents to an AgentForge backend (OpenTelemetry gen_ai semantics)."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "AgentForge" }]
+dependencies = []
+
+[project.optional-dependencies]
+langchain = ["langchain-core>=0.3"]
+
+[project.scripts]
+agentforge = "agentforge.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["agentforge*"]
