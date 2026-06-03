@@ -106,3 +106,39 @@ export interface MonthCost {
   month: string;
   cost: number;
 }
+
+export interface AlertRule {
+  id: string;
+  name: string;
+  metric: string;
+  comparator: string;
+  threshold: number;
+  window_hours: number;
+  severity: string;
+  channel: string;
+  enabled: boolean;
+  cooldown_minutes: number;
+  last_triggered_at: string | null;
+}
+
+export interface AlertEvent {
+  id: string;
+  rule_id: string;
+  triggered_at: string;
+  metric: string;
+  metric_value: number;
+  threshold: number;
+  severity: string;
+  status: string;
+  message: string;
+}
+
+export const ALERT_METRICS = [
+  "failure_rate",
+  "success_rate",
+  "avg_latency_ms",
+  "p95_latency_ms",
+  "tool_success_rate",
+  "throughput_per_hour",
+  "total_cost",
+] as const;

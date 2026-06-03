@@ -9,7 +9,7 @@ const NAV = [
   { href: "/agents", label: "Agents", icon: "🤖", soon: false },
   { href: "/costs", label: "Costs", icon: "💸" },
   { href: "/monitoring", label: "Monitoring", icon: "📈" },
-  { href: "/alerts", label: "Alerts", icon: "🚨", soon: true },
+  { href: "/alerts", label: "Alerts", icon: "🚨" },
   { href: "/incidents", label: "Incidents", icon: "🛠️", soon: true },
   { href: "/policies", label: "Policies", icon: "🛡️", soon: true },
   { href: "/settings", label: "Settings", icon: "⚙️", soon: true },

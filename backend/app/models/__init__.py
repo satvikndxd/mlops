@@ -6,6 +6,7 @@ from app.models.user import User
 from app.models.agent import Agent, AgentVersion
 from app.models.trace import Span, Trace
 from app.models.cost import CostRecord
+from app.models.alert import AlertEvent, AlertRule
 
 __all__ = [
     "Base",
@@ -16,4 +17,6 @@ __all__ = [
     "Trace",
     "Span",
     "CostRecord",
+    "AlertRule",
+    "AlertEvent",
 ]
