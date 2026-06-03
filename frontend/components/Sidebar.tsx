@@ -7,8 +7,8 @@ const NAV = [
   { href: "/", label: "Dashboard", icon: "📊" },
   { href: "/traces", label: "Traces", icon: "🧵" },
   { href: "/agents", label: "Agents", icon: "🤖", soon: false },
-  { href: "/costs", label: "Costs", icon: "💸", soon: true },
-  { href: "/monitoring", label: "Monitoring", icon: "📈", soon: true },
+  { href: "/costs", label: "Costs", icon: "💸" },
+  { href: "/monitoring", label: "Monitoring", icon: "📈" },
   { href: "/alerts", label: "Alerts", icon: "🚨", soon: true },
   { href: "/incidents", label: "Incidents", icon: "🛠️", soon: true },
   { href: "/policies", label: "Policies", icon: "🛡️", soon: true },
@@ -51,9 +51,9 @@ export function Sidebar() {
         })}
       </nav>
       <div className="mt-auto px-3 pt-6 text-[11px] leading-relaxed text-zinc-600">
-        Phase 0 · Steel thread
+        Phase 1A · Observability
         <br />
-        Tracing · Costs · Dashboard
+        Traces · Metrics · Costs
       </div>
     </aside>
   );

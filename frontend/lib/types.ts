@@ -63,3 +63,46 @@ export interface Agent {
   framework: string | null;
   description: string | null;
 }
+
+export interface MonitoringOverview {
+  window_hours: number;
+  total_traces: number;
+  throughput_per_hour: number;
+  success_rate: number;
+  failure_rate: number;
+  avg_latency_ms: number;
+  p50_latency_ms: number;
+  p95_latency_ms: number;
+  total_tokens: number;
+  total_cost: number;
+  tool_success_rate: number;
+  hallucination_rate: number | null;
+}
+
+export interface MetricPoint {
+  bucket: string;
+  value: number;
+}
+
+export interface TimeSeries {
+  metric: string;
+  bucket: string;
+  points: MetricPoint[];
+}
+
+export interface CostSummary {
+  today: number;
+  this_month: number;
+  all_time: number;
+  currency: string;
+}
+
+export interface CostBreakdownItem {
+  key: string;
+  cost: number;
+}
+
+export interface MonthCost {
+  month: string;
+  cost: number;
+}
