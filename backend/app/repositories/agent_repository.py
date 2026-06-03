@@ -76,3 +76,11 @@ class AgentRepository(BaseRepository):
     # --- Users ---------------------------------------------------------
     def get_user_by_email(self, email: str) -> User | None:
         return self.db.scalar(select(User).where(User.email == email))
+
+    def get_or_create_user(self, organization_id: uuid.UUID, email: str) -> User:
+        user = self.get_user_by_email(email)
+        if user is None:
+            user = User(organization_id=organization_id, email=email, role="member")
+            self.db.add(user)
+            self.db.flush()
+        return user

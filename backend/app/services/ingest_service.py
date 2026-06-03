@@ -11,7 +11,8 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
-from app.core.semconv import KIND_LLM
+from app.core.metrics import record_trace_metrics
+from app.core.semconv import KIND_LLM, KIND_TOOL
 from app.integrations.pricing import compute_cost, infer_provider
 from app.models import CostRecord, Span, Trace
 from app.repositories.agent_repository import AgentRepository
@@ -34,7 +35,7 @@ class IngestService:
 
         user = None
         if payload.user_email:
-            user = self.agents.get_user_by_email(payload.user_email)
+            user = self.agents.get_or_create_user(org.id, payload.user_email)
 
         trace = Trace(
             organization_id=org.id,
@@ -53,6 +54,9 @@ class IngestService:
         total_tokens = 0
         total_cost = 0.0
         total_latency = 0.0
+        cost_by_provider: dict[str, float] = {}
+        tokens_by_provider: dict[str, tuple[int, int]] = {}
+        tool_statuses: list[str] = []
 
         for span_in in payload.spans:
             provider = infer_provider(span_in.model, span_in.provider)
@@ -96,6 +100,17 @@ class IngestService:
             total_cost += span_cost
             total_latency += span_in.latency_ms
 
+            if span_in.kind == KIND_TOOL:
+                tool_statuses.append(span_in.status)
+
+            if span_in.kind == KIND_LLM and (span_in.input_tokens or span_in.output_tokens):
+                cost_by_provider[provider] = cost_by_provider.get(provider, 0.0) + span_cost
+                prev_in, prev_out = tokens_by_provider.get(provider, (0, 0))
+                tokens_by_provider[provider] = (
+                    prev_in + span_in.input_tokens,
+                    prev_out + span_in.output_tokens,
+                )
+
             if span_cost > 0:
                 self.costs.add(
                     CostRecord(
@@ -117,6 +132,15 @@ class IngestService:
 
         self.db.commit()
         self.db.refresh(trace)
+
+        record_trace_metrics(
+            agent=agent.name,
+            status=trace.status,
+            latency_ms=trace.latency_ms,
+            cost_by_provider=cost_by_provider,
+            tokens_by_provider=tokens_by_provider,
+            tool_statuses=tool_statuses,
+        )
         return trace
 
     @staticmethod

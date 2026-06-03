@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1 import api_router
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
+from app.core.metrics import metrics_response, prometheus_middleware
 
 logger = get_logger("agentforge")
 
@@ -34,6 +35,12 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    app.middleware("http")(prometheus_middleware)
+
+    @app.get("/metrics", include_in_schema=False)
+    def metrics():  # noqa: ANN202
+        return metrics_response()
 
     # Health probes are also exposed at the root for load balancers.
     @app.get("/healthz", tags=["health"], summary="Liveness probe")
