@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import app.services.audit_service as audit_service
 from app.api.deps import get_db
+from app.core import cache
 from app.core.config import settings
 from app.main import app
 from app.models import Base
@@ -25,6 +26,9 @@ def db_session(tmp_path, monkeypatch) -> Iterator[Session]:
 
     # Point the audit middleware's standalone session factory at the test DB.
     monkeypatch.setattr(audit_service, "SessionLocal", TestingSession)
+
+    # Isolate rate-limit state per test.
+    cache.reset_fallback()
 
     session = TestingSession()
     try:

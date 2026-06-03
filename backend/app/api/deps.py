@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.core.cache import rate_limit_ok
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import decode_access_token
@@ -92,3 +93,15 @@ def require_role(minimum: str):
 require_viewer = require_role("viewer")
 require_member = require_role("member")
 require_admin = require_role("admin")
+
+
+def rate_limit(request: Request, principal: CurrentPrincipal) -> None:
+    """Rate-limit ingestion by principal (or client IP for anonymous)."""
+    identity = principal.actor
+    if identity == "anonymous":
+        identity = request.client.host if request.client else "anon"
+    if not rate_limit_ok(identity):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Rate limit exceeded — slow down.",
+        )

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
+from app.core.cache import cache_get, cache_set
 from app.repositories.agent_repository import AgentRepository
 from app.repositories.cost_repository import CostRepository
 from app.repositories.trace_repository import TraceRepository
@@ -20,13 +21,19 @@ class DashboardService:
 
     def summary(self, recent_limit: int = 10) -> DashboardSummary:
         org = self.agents.get_or_create_default_org()
+
+        cache_key = f"dashboard:summary:{org.id}:{recent_limit}"
+        cached = cache_get(cache_key)
+        if cached is not None:
+            return DashboardSummary.model_validate(cached)
+
         agg = self.traces.aggregate(org.id)
         total = agg["total_traces"]
         success_rate = (agg["successes"] / total) if total else 0.0
 
         recent = self.traces.list_recent(org.id, limit=recent_limit)
 
-        return DashboardSummary(
+        summary = DashboardSummary(
             total_traces=total,
             total_cost=round(agg["total_cost"], 6),
             total_tokens=agg["total_tokens"],
@@ -37,3 +44,5 @@ class DashboardService:
             cost_by_provider=[ProviderCost(**r) for r in self.costs.cost_by_provider(org.id)],
             recent_traces=[TraceSummary.model_validate(t) for t in recent],
         )
+        cache_set(cache_key, summary.model_dump())
+        return summary

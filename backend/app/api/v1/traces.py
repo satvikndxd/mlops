@@ -6,7 +6,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.deps import DbSession, get_ingest_service
+from app.api.deps import DbSession, get_ingest_service, rate_limit
 from app.repositories.agent_repository import AgentRepository
 from app.repositories.trace_repository import TraceRepository
 from app.schemas.trace import (
@@ -25,6 +25,7 @@ router = APIRouter()
     response_model=TraceIngestResult,
     status_code=status.HTTP_201_CREATED,
     summary="Ingest an agent trace",
+    dependencies=[Depends(rate_limit)],
 )
 def ingest_trace(
     payload: TraceIn,

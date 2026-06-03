@@ -17,6 +17,17 @@ services:
       timeout: 3s
       retries: 20
 
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
   backend:
     build:
       context: ../backend
@@ -26,8 +37,11 @@ services:
       AGENTFORGE_DEBUG: "false"
       AGENTFORGE_DATABASE_URL: postgresql+psycopg2://agentforge:agentforge@postgres:5432/agentforge
       AGENTFORGE_CORS_ORIGINS: '["http://localhost:3000"]'
+      AGENTFORGE_REDIS_URL: redis://redis:6379/0
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     # Apply migrations, seed demo data, then serve.
     command: >
