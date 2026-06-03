@@ -12,7 +12,7 @@ const NAV = [
   { href: "/alerts", label: "Alerts", icon: "🚨" },
   { href: "/incidents", label: "Incidents", icon: "🛠️", soon: true },
   { href: "/policies", label: "Policies", icon: "🛡️", soon: true },
-  { href: "/settings", label: "Settings", icon: "⚙️", soon: true },
+  { href: "/settings", label: "Settings", icon: "⚙️" },
 ];
 
 export function Sidebar() {
