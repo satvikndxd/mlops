@@ -137,3 +137,11 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Cached market data (re-downloadable, not redistributable)
+data/
