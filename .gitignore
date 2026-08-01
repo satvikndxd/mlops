@@ -145,3 +145,4 @@ __pycache__/
 
 # Cached market data (re-downloadable, not redistributable)
 data/
+*.egg-info/

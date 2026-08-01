@@ -1,0 +1,24 @@
+name: low_vol
+description: Low-volatility (long least volatile names, short most volatile)
+hypothesis: >
+  Low-volatility stocks earn higher risk-adjusted returns than high-volatility
+  stocks (the low-volatility anomaly; Ang et al. 2006), implementable as a
+  weekly dollar-neutral long/short portfolio net of costs.
+
+signal:
+  type: low_vol
+  params:
+    window: 63
+
+filter: null         # no vol screen — the signal itself is volatility
+
+portfolio:
+  top_pct: 0.10
+  gross_per_side: 0.5
+
+costs:
+  bps_per_side: 5
+
+universe:
+  min_history: 80
+  min_names: 100
