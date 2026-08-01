@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from signals import (
+from quant_research.signals import (
     SIGNALS,
     compute_signal,
     filter_cross_section,

@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from backtest import benchmark_weekly, compute_turnover, run_backtest
+from quant_research.engine import benchmark_weekly, compute_turnover, run_backtest
 
 
 def w(**kwargs):

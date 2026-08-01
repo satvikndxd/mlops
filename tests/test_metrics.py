@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from metrics import (
+from quant_research.metrics import (
     annualized_return,
     annualized_vol,
     bootstrap_ci,

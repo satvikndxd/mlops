@@ -22,7 +22,7 @@ import pandas as pd
 import yaml
 from scipy.stats import spearmanr
 
-from signals import compute_signal, filter_cross_section, realized_vol
+from .signals import compute_signal, filter_cross_section, realized_vol
 
 DEFAULTS = {
     "filter": {"vol_window": 21, "vol_cut": 0.80},

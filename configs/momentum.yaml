@@ -1,5 +1,9 @@
 name: momentum
 description: 6-1 momentum (past 126-day return, skipping the most recent 21 days)
+hypothesis: >
+  Stocks with strong intermediate-horizon returns (past ~6 months, excluding the
+  most recent month) continue to outperform at a weekly horizon (Jegadeesh &
+  Titman 1993), net of transaction costs.
 
 signal:
   type: momentum

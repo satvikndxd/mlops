@@ -53,9 +53,9 @@ plt.rcParams.update(
 )
 
 
-def _save(fig, name: str) -> str:
-    os.makedirs(CHART_DIR, exist_ok=True)
-    path = os.path.join(CHART_DIR, name)
+def _save(fig, name: str, out_dir: str = CHART_DIR) -> str:
+    os.makedirs(out_dir, exist_ok=True)
+    path = os.path.join(out_dir, name)
     fig.savefig(path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     return path
@@ -139,10 +139,12 @@ def long_short_bars(df: pd.DataFrame, prefix: str = "") -> str:
     return _save(fig, f"{prefix}long_short.png")
 
 
-def dashboard(df: pd.DataFrame, spy_ret: pd.Series, name: str) -> str:
+def dashboard(
+    df: pd.DataFrame, spy_ret: pd.Series, name: str, out_dir: str | None = None
+) -> str:
     """Six-panel diagnostics: cumulative return, drawdown, rolling Sharpe,
     rolling IC, turnover, and rolling market beta."""
-    from metrics import drawdown_series, rolling_beta, rolling_sharpe
+    from .metrics import drawdown_series, rolling_beta, rolling_sharpe
 
     net = df["strategy_ret_net"]
     fig, axes = plt.subplots(3, 2, figsize=(14, 11))
@@ -197,4 +199,6 @@ def dashboard(df: pd.DataFrame, spy_ret: pd.Series, name: str) -> str:
     ax.set_title("Rolling 52-week beta vs SPY (net)")
 
     fig.tight_layout(rect=(0, 0, 1, 0.97))
+    if out_dir is not None:
+        return _save(fig, "dashboard.png", out_dir=out_dir)
     return _save(fig, f"{name}_dashboard.png")

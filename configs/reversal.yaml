@@ -1,5 +1,10 @@
 name: reversal
 description: Short-term reversal (buy 5-day losers, sell 5-day winners) with a volatility screen
+hypothesis: >
+  Stocks that underperformed over the past week outperform over the next week
+  (short-term reversal; Jegadeesh 1990, Lehmann 1990), and screening out
+  high-volatility names leaves risk-adjusted excess returns that survive
+  transaction costs.
 
 signal:
   type: reversal
