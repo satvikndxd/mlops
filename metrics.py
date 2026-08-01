@@ -51,6 +51,65 @@ def ic_stats(ic: pd.Series) -> dict:
     }
 
 
+def bootstrap_ci(
+    series: pd.Series,
+    n_boot: int = 2000,
+    seed: int = 42,
+    ppy: int = PERIODS_PER_YEAR,
+    ci: float = 0.95,
+) -> dict:
+    """IID bootstrap 95% confidence intervals for annualized return and Sharpe.
+
+    Resamples weekly returns with replacement; a fixed seed keeps the study
+    reproducible. (An IID bootstrap understates uncertainty if returns are
+    autocorrelated — acceptable here given weekly, non-overlapping periods.)
+    """
+    x = series.dropna().to_numpy()
+    rng = np.random.default_rng(seed)
+    idx = rng.integers(0, len(x), size=(n_boot, len(x)))
+    samples = x[idx]
+
+    ann_ret = (1 + samples).prod(axis=1) ** (ppy / len(x)) - 1
+    mu, sd = samples.mean(axis=1), samples.std(axis=1, ddof=1)
+    sharpe = np.where(sd > 0, mu / sd * np.sqrt(ppy), np.nan)
+
+    lo, hi = (1 - ci) / 2 * 100, (1 + ci) / 2 * 100
+    return {
+        "ann_return_ci": tuple(np.percentile(ann_ret, [lo, hi])),
+        "sharpe_ci": tuple(np.nanpercentile(sharpe, [lo, hi])),
+        "n_boot": n_boot,
+    }
+
+
+def rolling_sharpe(series: pd.Series, window: int = 52, ppy: int = PERIODS_PER_YEAR) -> pd.Series:
+    mu = series.rolling(window).mean()
+    sd = series.rolling(window).std()
+    return (mu / sd) * np.sqrt(ppy)
+
+
+def rolling_beta(strategy: pd.Series, market: pd.Series, window: int = 52) -> pd.Series:
+    cov = strategy.rolling(window).cov(market)
+    var = market.rolling(window).var()
+    return cov / var
+
+
+def subperiod_table(df: pd.DataFrame, periods: list[tuple[str, str]]) -> pd.DataFrame:
+    """Per-sub-period performance: did the effect survive across regimes?"""
+    rows = {}
+    for start, end in periods:
+        sub = df.loc[start:end]
+        if len(sub) < 10:
+            continue
+        rows[f"{start}–{end}"] = {
+            "Weeks": len(sub),
+            "Gross ann.": annualized_return(sub["strategy_ret"]),
+            "Net ann.": annualized_return(sub["strategy_ret_net"]),
+            "Net Sharpe": sharpe_ratio(sub["strategy_ret_net"]),
+            "Mean IC": float(sub["ic"].mean()),
+        }
+    return pd.DataFrame(rows).T
+
+
 def summary_table(gross: pd.Series, net: pd.Series) -> pd.DataFrame:
     rows = {}
     for name, s in [("Gross", gross), ("Net of costs", net)]:

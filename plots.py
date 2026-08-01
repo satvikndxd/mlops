@@ -61,7 +61,7 @@ def _save(fig, name: str) -> str:
     return path
 
 
-def cumulative_returns(df: pd.DataFrame) -> str:
+def cumulative_returns(df: pd.DataFrame, prefix: str = "") -> str:
     """Growth of $1: gross vs net of transaction costs."""
     cum_gross = (1 + df["strategy_ret"]).cumprod()
     cum_net = (1 + df["strategy_ret_net"]).cumprod()
@@ -82,10 +82,10 @@ def cumulative_returns(df: pd.DataFrame) -> str:
     ax.legend(loc="upper left")
     ax.margins(x=0.02)
     fig.subplots_adjust(right=0.88)
-    return _save(fig, "cumulative_returns.png")
+    return _save(fig, f"{prefix}cumulative_returns.png")
 
 
-def drawdown(dd: pd.Series) -> str:
+def drawdown(dd: pd.Series, prefix: str = "") -> str:
     fig, ax = plt.subplots(figsize=(10, 3.5))
     ax.fill_between(dd.index, dd.values, 0, color=BLUE, alpha=0.25, lw=0)
     ax.plot(dd.index, dd.values, color=BLUE, lw=1.5)
@@ -97,10 +97,10 @@ def drawdown(dd: pd.Series) -> str:
 
     ax.set_title("Drawdown (net of costs)")
     ax.yaxis.set_major_formatter(lambda x, _: f"{x:.0%}")
-    return _save(fig, "drawdown.png")
+    return _save(fig, f"{prefix}drawdown.png")
 
 
-def ic_series(ic: pd.Series) -> str:
+def ic_series(ic: pd.Series, prefix: str = "") -> str:
     """Weekly cross-sectional Spearman IC with its mean."""
     ic = ic.dropna()
     fig, ax = plt.subplots(figsize=(10, 4))
@@ -113,10 +113,10 @@ def ic_series(ic: pd.Series) -> str:
     ax.set_title("Weekly information coefficient (signal vs forward return, Spearman)")
     ax.margins(x=0.02)
     fig.subplots_adjust(right=0.9)
-    return _save(fig, "information_coefficient.png")
+    return _save(fig, f"{prefix}information_coefficient.png")
 
 
-def long_short_bars(df: pd.DataFrame) -> str:
+def long_short_bars(df: pd.DataFrame, prefix: str = "") -> str:
     """Average weekly return by leg vs the combined book."""
     vals = {
         "Long leg": df["long_ret"].mean(),
@@ -136,4 +136,65 @@ def long_short_bars(df: pd.DataFrame) -> str:
     ax.set_title("Average weekly return by leg")
     ax.yaxis.set_major_formatter(lambda x, _: f"{x:.2%}")
     ax.grid(axis="x", visible=False)
-    return _save(fig, "long_short.png")
+    return _save(fig, f"{prefix}long_short.png")
+
+
+def dashboard(df: pd.DataFrame, spy_ret: pd.Series, name: str) -> str:
+    """Six-panel diagnostics: cumulative return, drawdown, rolling Sharpe,
+    rolling IC, turnover, and rolling market beta."""
+    from metrics import drawdown_series, rolling_beta, rolling_sharpe
+
+    net = df["strategy_ret_net"]
+    fig, axes = plt.subplots(3, 2, figsize=(14, 11))
+    fig.suptitle(f"{name} — diagnostics", x=0.06, ha="left",
+                 fontsize=14, fontweight="bold", color=INK)
+
+    # 1. cumulative returns
+    ax = axes[0, 0]
+    cg, cn = (1 + df["strategy_ret"]).cumprod(), (1 + net).cumprod()
+    ax.plot(cg.index, cg.values, color=AQUA, lw=1.8, label="Gross")
+    ax.plot(cn.index, cn.values, color=BLUE, lw=1.8, label="Net")
+    ax.axhline(1.0, color=BASELINE, lw=1, zorder=0)
+    ax.legend(loc="upper left", fontsize=9)
+    ax.set_title("Growth of $1 (gross vs net)")
+
+    # 2. drawdown
+    ax = axes[0, 1]
+    dd = drawdown_series(net)
+    ax.fill_between(dd.index, dd.values, 0, color=BLUE, alpha=0.25, lw=0)
+    ax.plot(dd.index, dd.values, color=BLUE, lw=1.2)
+    ax.yaxis.set_major_formatter(lambda x, _: f"{x:.0%}")
+    ax.set_title("Drawdown (net)")
+
+    # 3. rolling Sharpe
+    ax = axes[1, 0]
+    rs = rolling_sharpe(net).dropna()
+    ax.plot(rs.index, rs.values, color=BLUE, lw=1.8)
+    ax.axhline(0, color=BASELINE, lw=1)
+    ax.set_title("Rolling 52-week Sharpe (net)")
+
+    # 4. rolling IC
+    ax = axes[1, 1]
+    ric = df["ic"].rolling(52).mean().dropna()
+    ax.plot(ric.index, ric.values, color=BLUE, lw=1.8)
+    ax.axhline(0, color=BASELINE, lw=1)
+    ax.axhline(df["ic"].mean(), color=INK2, lw=1, ls="--")
+    ax.set_title("Rolling 52-week mean IC (dashed: full-sample mean)")
+
+    # 5. turnover
+    ax = axes[2, 0]
+    ax.plot(df.index, df["turnover"].values, color=AQUA, lw=0.9, alpha=0.6)
+    tavg = df["turnover"].rolling(13).mean()
+    ax.plot(tavg.index, tavg.values, color=BLUE, lw=1.8, label="13-wk avg")
+    ax.legend(loc="lower right", fontsize=9)
+    ax.set_title("Weekly turnover (traded notional / NAV)")
+
+    # 6. rolling beta
+    ax = axes[2, 1]
+    rb = rolling_beta(net, spy_ret.reindex(net.index)).dropna()
+    ax.plot(rb.index, rb.values, color=BLUE, lw=1.8)
+    ax.axhline(0, color=BASELINE, lw=1)
+    ax.set_title("Rolling 52-week beta vs SPY (net)")
+
+    fig.tight_layout(rect=(0, 0, 1, 0.97))
+    return _save(fig, f"{name}_dashboard.png")

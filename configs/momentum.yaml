@@ -1,0 +1,23 @@
+name: momentum
+description: 6-1 momentum (past 126-day return, skipping the most recent 21 days)
+
+signal:
+  type: momentum
+  params:
+    lookback: 126
+    skip: 21
+
+filter:
+  vol_window: 21
+  vol_cut: 0.80
+
+portfolio:
+  top_pct: 0.10
+  gross_per_side: 0.5
+
+costs:
+  bps_per_side: 5
+
+universe:
+  min_history: 150   # momentum needs lookback + skip days of history
+  min_names: 100

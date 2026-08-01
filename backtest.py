@@ -1,35 +1,48 @@
-"""Weekly long/short reversal backtest with turnover-based transaction costs.
+"""Config-driven weekly long/short backtest engine.
 
-Methodology
------------
-- Rebalance on the last trading day of each week.
-- On each rebalance date t, using only data up to and including t:
-    * past 5-day return r5, trailing 21-day volatility vol21
-    * drop the top 20% most volatile names
-    * signal = -r5; long the top decile, short the bottom decile (equal weight,
-      0.5 gross per side -> ~1x gross, dollar-neutral)
-- Hold until the next rebalance date (~5 trading days). Holding periods tile
-  the sample exactly, so weekly returns are non-overlapping.
-- Costs: 5 bps per side, charged on actual traded notional
-  cost_t = sum_i |w_{i,t} - w_{i,t-1}| * 5 bps
-  (first week trades the full 1x gross book -> ~5 bps).
-- IC: Spearman rank correlation between the signal and realized forward
-  returns on the filtered universe, each week.
+Any registered signal (signals.SIGNALS) runs through the same engine:
+
+- Rebalance on the last trading day of each week, using only information
+  available up to and including that day.
+- Optional realized-volatility screen (drop the most volatile quantile).
+- Long the top `top_pct` of the signal, short the bottom `top_pct`,
+  equal-weighted, `gross_per_side` per side (default 0.5 -> ~1x gross,
+  dollar-neutral).
+- Hold until the next rebalance date (~5 trading days); holding periods
+  tile the sample exactly, so weekly returns are non-overlapping.
+- Costs charged on actual traded notional: cost_t = sum_i |dw_i| * bps.
+- Weekly cross-sectional Spearman IC of the signal vs realized forward
+  returns on the filtered universe.
 """
 
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+import yaml
 from scipy.stats import spearmanr
 
-from signals import past_return, realized_vol, reversal_signal
+from signals import compute_signal, filter_cross_section, realized_vol
 
-COST_PER_SIDE = 0.0005  # 5 bps
-VOL_CUT = 0.80          # drop top 20% most volatile
-TOP_PCT = 0.10          # decile long/short
-MIN_HISTORY = 60        # trading days of history before trading
-MIN_NAMES = 100         # minimum cross-section size
+DEFAULTS = {
+    "filter": {"vol_window": 21, "vol_cut": 0.80},
+    "portfolio": {"top_pct": 0.10, "gross_per_side": 0.5},
+    "costs": {"bps_per_side": 5},
+    "universe": {"min_history": 60, "min_names": 100},
+}
+
+
+def load_config(path: str) -> dict:
+    with open(path) as f:
+        return yaml.safe_load(f)
+
+
+def compute_turnover(prev_weights: pd.Series, weights: pd.Series) -> float:
+    """Total traded notional (in units of NAV) between two weight vectors."""
+    idx = weights.index.union(prev_weights.index)
+    new = weights.reindex(idx, fill_value=0.0)
+    old = prev_weights.reindex(idx, fill_value=0.0)
+    return float((new - old).abs().sum())
 
 
 def rebalance_dates(px: pd.DataFrame) -> pd.DatetimeIndex:
@@ -38,48 +51,56 @@ def rebalance_dates(px: pd.DataFrame) -> pd.DatetimeIndex:
     return pd.DatetimeIndex(idx.groupby(idx.dt.to_period("W")).max().values)
 
 
-def run_backtest(px: pd.DataFrame) -> pd.DataFrame:
-    r5_all = past_return(px, 5)
-    vol_all = realized_vol(px, 21)
+def run_backtest(px: pd.DataFrame, cfg: dict) -> pd.DataFrame:
+    filt_cfg = cfg.get("filter", DEFAULTS["filter"])
+    port_cfg = {**DEFAULTS["portfolio"], **cfg.get("portfolio", {})}
+    cost_cfg = {**DEFAULTS["costs"], **cfg.get("costs", {})}
+    uni_cfg = {**DEFAULTS["universe"], **cfg.get("universe", {})}
+
+    cost_per_side = cost_cfg["bps_per_side"] / 1e4
+    top_pct = port_cfg["top_pct"]
+    gross_side = port_cfg["gross_per_side"]
+
+    sig_panel = compute_signal(px, cfg["signal"])
+    vol_panel = (
+        realized_vol(px, filt_cfg["vol_window"]) if filt_cfg is not None else None
+    )
     dates = rebalance_dates(px)
 
     prev_weights = pd.Series(dtype=float)
     rows = []
 
     for t, t_next in zip(dates[:-1], dates[1:]):
-        # information set: data up to and including t only
-        if px.index.get_loc(t) < MIN_HISTORY:
+        if px.index.get_loc(t) < uni_cfg["min_history"]:
             continue
 
-        signal = reversal_signal(
-            r5_all.loc[t], vol_all.loc[t], vol_cut=VOL_CUT, min_names=MIN_NAMES
+        signal = filter_cross_section(
+            sig_panel.loc[t],
+            vol_panel.loc[t] if vol_panel is not None else None,
+            vol_cut=filt_cfg["vol_cut"] if filt_cfg else 0.80,
+            min_names=uni_cfg["min_names"],
         )
         if signal is None:
             continue
 
-        n_side = max(int(TOP_PCT * len(signal)), 1)
+        n_side = max(int(top_pct * len(signal)), 1)
         longs = signal.nlargest(n_side).index
         shorts = signal.nsmallest(n_side).index
 
-        # equal-weight, dollar-neutral, ~1x gross
         weights = pd.Series(0.0, index=signal.index)
-        weights[longs] = 0.5 / n_side
-        weights[shorts] = -0.5 / n_side
+        weights[longs] = gross_side / n_side
+        weights[shorts] = -gross_side / n_side
 
         # realized forward return over the holding period (t -> next rebalance)
         fwd = px.loc[t_next] / px.loc[t] - 1
         long_ret = fwd[longs].mean()
         short_ret = fwd[shorts].mean()
-        gross_ret = 0.5 * (long_ret - short_ret)
+        gross_ret = gross_side * (long_ret - short_ret)
 
-        # turnover-based cost on traded notional
-        combined = weights.reindex(weights.index.union(prev_weights.index), fill_value=0.0)
-        prev = prev_weights.reindex(combined.index, fill_value=0.0)
-        traded_notional = (combined - prev).abs().sum()
-        cost = traded_notional * COST_PER_SIDE
+        traded_notional = compute_turnover(prev_weights, weights)
+        cost = traded_notional * cost_per_side
         prev_weights = weights
 
-        # weekly cross-sectional IC on the filtered universe
         fwd_universe = fwd[signal.index]
         mask = fwd_universe.notna()
         ic = spearmanr(signal[mask], fwd_universe[mask])[0] if mask.sum() > 10 else np.nan

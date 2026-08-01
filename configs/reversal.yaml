@@ -1,0 +1,22 @@
+name: reversal
+description: Short-term reversal (buy 5-day losers, sell 5-day winners) with a volatility screen
+
+signal:
+  type: reversal
+  params:
+    lookback: 5
+
+filter:            # drop the top 20% most volatile names
+  vol_window: 21
+  vol_cut: 0.80
+
+portfolio:
+  top_pct: 0.10
+  gross_per_side: 0.5
+
+costs:
+  bps_per_side: 5
+
+universe:
+  min_history: 60
+  min_names: 100
